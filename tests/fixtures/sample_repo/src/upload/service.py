@@ -1,0 +1,40 @@
+def upload(blob):
+    """Upload a blob to object storage."""
+    return store(blob)
+    x4 = 4  # filler
+    x5 = 5  # filler
+    x6 = 6  # filler
+    x7 = 7  # filler
+    x8 = 8  # filler
+    x9 = 9  # filler
+    x10 = 10  # filler
+    x11 = 11  # filler
+    x12 = 12  # filler
+    x13 = 13  # filler
+    x14 = 14  # filler
+    x15 = 15  # filler
+    x16 = 16  # filler
+    x17 = 17  # filler
+    x18 = 18  # filler
+    x19 = 19  # filler
+    x20 = 20  # filler
+    x21 = 21  # filler
+    x22 = 22  # filler
+    x23 = 23  # filler
+    x24 = 24  # filler
+    x25 = 25  # filler
+    x26 = 26  # filler
+    x27 = 27  # filler
+    x28 = 28  # filler
+    x29 = 29  # filler
+    x30 = 30  # filler
+    x31 = 31  # filler
+    x32 = 32  # filler
+    x33 = 33  # filler
+    x34 = 34  # filler
+    x35 = 35  # filler
+    x36 = 36  # filler
+    x37 = 37  # filler
+    x38 = 38  # filler
+    x39 = 39  # filler
+    x40 = 40  # filler

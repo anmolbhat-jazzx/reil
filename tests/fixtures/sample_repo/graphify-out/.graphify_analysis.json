@@ -1,0 +1,27 @@
+{
+  "communities": {
+    "0": [
+      "src_auth_service_login",
+      "src_auth_service_validate_token",
+      "src_auth_controller_handle_login",
+      "concept_jwt",
+      "concept_jwt_dup"
+    ],
+    "1": [
+      "src_upload_service_upload",
+      "src_upload_routes_upload_route"
+    ]
+  },
+  "cohesion": {
+    "0": 0.82,
+    "1": 0.55
+  },
+  "gods": [
+    "src_auth_service_login"
+  ],
+  "surprises": [],
+  "questions": [
+    "How does the login flow work?",
+    "What validates the JWT?"
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "login_flow",
+        "label": "Login Flow",
+        "nodes": [
+          "src_auth_controller_handle_login",
+          "src_auth_service_login",
+          "src_auth_service_validate_token"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "src/auth/service.py"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "src_auth_service_login",
+      "label": "login",
+      "file_type": "code",
+      "source_file": "src/auth/service.py",
+      "source_location": "L10-L30"
+    },
+    {
+      "id": "src_auth_service_validate_token",
+      "label": "validate_token",
+      "file_type": "code",
+      "source_file": "src/auth/service.py",
+      "source_location": "L32-L48"
+    },
+    {
+      "id": "src_auth_controller_handle_login",
+      "label": "handle_login",
+      "file_type": "code",
+      "source_file": "src/auth/controller.py",
+      "source_location": "L5-L20"
+    },
+    {
+      "id": "src_upload_service_upload",
+      "label": "upload",
+      "file_type": "code",
+      "source_file": "src/upload/service.py",
+      "source_location": "L1-L40"
+    },
+    {
+      "id": "src_upload_routes_upload_route",
+      "label": "upload_route",
+      "file_type": "code",
+      "source_file": "src/upload/routes.py",
+      "source_location": "L1-L12"
+    },
+    {
+      "id": "concept_jwt",
+      "label": "JWT",
+      "file_type": "concept",
+      "rationale": "Stateless auth token carried in the Authorization header."
+    },
+    {
+      "id": "concept_jwt_dup",
+      "label": "JWT",
+      "file_type": "concept"
+    },
+    {
+      "id": "docs_readme_overview",
+      "label": "Project Overview",
+      "file_type": "document",
+      "source_file": "docs/README.md"
+    }
+  ],
+  "links": [
+    {
+      "source": "src_auth_controller_handle_login",
+      "target": "src_auth_service_login",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "weight": 1.0,
+      "source_file": "src/auth/controller.py"
+    },
+    {
+      "source": "src_auth_service_login",
+      "target": "src_auth_service_validate_token",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "weight": 1.0,
+      "source_file": "src/auth/service.py"
+    },
+    {
+      "source": "src_auth_controller_handle_login",
+      "target": "src_auth_service_login",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "weight": 1.0,
+      "source_file": "src/auth/controller.py"
+    },
+    {
+      "source": "src_auth_service_login",
+      "target": "concept_jwt",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "weight": 1.0,
+      "source_file": "src/auth/service.py"
+    },
+    {
+      "source": "src_auth_service_validate_token",
+      "target": "concept_jwt",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "weight": 1.0,
+      "source_file": "src/auth/service.py"
+    },
+    {
+      "source": "src_upload_routes_upload_route",
+      "target": "src_upload_service_upload",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "weight": 1.0,
+      "source_file": "src/upload/routes.py"
+    }
+  ]
+}
