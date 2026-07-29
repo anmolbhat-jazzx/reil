@@ -1,4 +1,4 @@
-"""Phase 10 integration tests: the `knowledge` CLI end-to-end (build → query)."""
+"""Phase 10 integration tests: the `reil` CLI end-to-end (build → query)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def test_build_end_to_end(repo_copy: Path) -> None:
     for name in ("AGENTS.md", "CLAUDE.md"):
         doc = repo_copy / name
         assert doc.is_file(), name
-        assert "knowledge ask" in doc.read_text()
+        assert "reil ask" in doc.read_text()
     # a second build updates in place without duplicating the managed block
     runner.invoke(app, ["build", str(repo_copy), "--no-build-graph"])
     for name in ("AGENTS.md", "CLAUDE.md"):
@@ -48,19 +48,19 @@ def test_build_custom_output_then_query_and_stats(repo_copy: Path, tmp_path: Pat
     assert build.exit_code == 0, build.output
     assert out.is_file()
 
-    validate = runner.invoke(app, ["validate", str(out)])
+    validate = runner.invoke(app, ["validate", "--kb", str(out)])
     assert validate.exit_code == 0, validate.output
     assert "valid" in validate.output
 
-    query = runner.invoke(app, ["query", str(out), "upload"])
+    query = runner.invoke(app, ["query", "upload", "--kb", str(out)])
     assert query.exit_code == 0, query.output
     assert "Upload Pipeline" in query.output
 
-    stats = runner.invoke(app, ["stats", str(out)])
+    stats = runner.invoke(app, ["stats", "--kb", str(out)])
     assert stats.exit_code == 0
     assert "repo" in stats.output
 
-    inspect = runner.invoke(app, ["inspect", str(out)])
+    inspect = runner.invoke(app, ["inspect", "--kb", str(out)])
     assert inspect.exit_code == 0
     assert "Authentication" in inspect.output
 
@@ -71,3 +71,10 @@ def test_build_missing_graph_with_no_build_fails(tmp_path: Path) -> None:
     result = runner.invoke(app, ["build", str(empty), "--no-build-graph"])
     assert result.exit_code == 1
     assert "build failed" in result.output
+
+
+def test_query_missing_kb_gives_guidance(tmp_path: Path) -> None:
+    # no .kb at the default path and none given → fail with a build hint
+    result = runner.invoke(app, ["query", "anything", "--kb", str(tmp_path / "nope.kb")])
+    assert result.exit_code == 1
+    assert "reil build" in result.output

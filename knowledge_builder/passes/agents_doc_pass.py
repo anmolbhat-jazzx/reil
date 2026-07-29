@@ -4,7 +4,7 @@ An agent won't discover the compiled knowledge base on its own. This pass drops 
 auto-managed section into the repo's agent-instruction files (``AGENTS.md`` for Cursor and
 AGENTS.md-aware tools, ``CLAUDE.md`` for Claude Code), created if absent, telling any coding
 agent to consult ``knowledge.kb`` first. The section is delimited by marker comments so
-re-running ``knowledge build`` updates *only* our block and never clobbers the user's own
+re-running ``reil build`` updates *only* our block and never clobbers the user's own
 content.
 """
 
@@ -18,7 +18,7 @@ from knowledge_builder.compiler.pass_base import CompilerPass
 
 #: Agent-instruction files we manage, in order.
 MANAGED_FILES = ("AGENTS.md", "CLAUDE.md")
-BEGIN = "<!-- BEGIN knowledge.kb (auto-managed by `knowledge build`) -->"
+BEGIN = "<!-- BEGIN knowledge.kb (auto-managed) -->"
 END = "<!-- END knowledge.kb -->"
 
 
@@ -52,17 +52,21 @@ def render_block(kb_rel: str) -> str:
     return (
         f"{BEGIN}\n"
         "## Repository knowledge (knowledge.kb)\n\n"
-        "Prefer querying the compiled knowledge base over reading source — it is far "
-        "cheaper. For ANY question about this codebase's architecture, modules, or how "
-        "something works, use it FIRST:\n\n"
-        f"1. If `{kb_rel}` is missing (it is gitignored / per-machine), build it once:\n"
-        "   `knowledge build .`  (needs the `knowledge` CLI installed).\n"
-        "2. Query it:\n"
-        f'    - Detailed (map + exact code): `knowledge ask {kb_rel} "<question>" --repo .`\n'
-        f'    - Overview (cheapest, no code): `knowledge context {kb_rel} "<question>"`\n'
-        f'    - Find entities: `knowledge query {kb_rel} "<terms>"`\n\n'
-        "Rebuild after significant changes: `knowledge build . --rebuild`. "
-        "If the KB cannot answer, fall back to reading source.\n"
+        f"This repo can be queried through a compiled knowledge base at `{kb_rel}` — far "
+        "cheaper than reading source. Use it FIRST for questions about architecture, "
+        "modules, or how something works, **when the `reil` CLI is available**:\n\n"
+        "1. Check the tool exists: `command -v reil`. If it is NOT installed, skip "
+        "this section and read source directly — do NOT report the KB as empty or stale; "
+        "the tool is simply not present in this environment.\n"
+        f"2. If `{kb_rel}` is missing (it is gitignored / per-machine), build it once: "
+        "`reil build .`\n"
+        "3. Query it (run from the repo root; the KB path defaults to "
+        f"`{kb_rel}`):\n"
+        '    - Detailed (map + exact code): `reil ask "<question>"`\n'
+        '    - Overview (cheapest, no code): `reil context "<question>"`\n'
+        '    - Find entities: `reil query "<terms>"`\n\n'
+        "Rebuild after significant changes: `reil build . --rebuild`. If the CLI is "
+        "missing or the KB cannot answer, fall back to reading source.\n"
         f"{END}"
     )
 

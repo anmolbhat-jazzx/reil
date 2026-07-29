@@ -30,6 +30,22 @@ app = typer.Typer(
 console = Console()
 err_console = Console(stderr=True)
 
+#: Conventional location of the compiled artifact, relative to the current directory.
+DEFAULT_KB = Path(".knowledge/knowledge.kb")
+
+
+def _resolve_kb(kb: Path | None) -> Path:
+    """Return the KB path (default ``.knowledge/knowledge.kb``), or fail with guidance."""
+    path = kb or DEFAULT_KB
+    if not path.is_file():
+        err_console.print(f"[bold red]✗ no knowledge base at {path}[/bold red]")
+        err_console.print(
+            "  Run [bold]reil build .[/bold] to create it, or pass [bold]--kb <path>[/bold]."
+        )
+        raise typer.Exit(1)
+    return path
+
+
 # Map each pass to the Definition-of-Done stage line it belongs to.
 _STAGE_LABELS: dict[str, str] = {
     "graph-build": "Building Graphify graph",
@@ -114,9 +130,10 @@ def build(
 
 @app.command()
 def validate(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
 ) -> None:
     """Validate an existing knowledge.kb and print a report."""
+    artifact = _resolve_kb(kb)
     with KnowledgeReader(artifact) as reader:
         report = validate_repository(reader.load_repository())
 
@@ -134,9 +151,10 @@ def validate(
 
 @app.command()
 def inspect(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
 ) -> None:
     """Show metadata, counts, and modules of a knowledge.kb."""
+    artifact = _resolve_kb(kb)
     with KnowledgeReader(artifact) as reader:
         meta = reader.metadata()
         counts = reader.counts()
@@ -167,13 +185,13 @@ def inspect(
 
 @app.command()
 def query(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
     text: str = typer.Argument(..., help="Search text."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
     limit: int = typer.Option(10, "--limit", "-n", help="Max results."),
 ) -> None:
     """Retrieve entities matching TEXT (deterministic keyword search)."""
-    with KnowledgeBase(artifact) as kb:
-        results = kb.query(text, limit=limit)
+    with KnowledgeBase(_resolve_kb(kb)) as base:
+        results = base.query(text, limit=limit)
 
     if not results:
         console.print("[dim]no matches[/dim]")
@@ -189,14 +207,14 @@ def query(
 
 @app.command()
 def context(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
     text: str = typer.Argument(..., help="The question to build context for."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
     limit: int = typer.Option(8, "--limit", "-n", help="Max entities to include."),
     show: bool = typer.Option(False, "--show", help="Print the assembled context text."),
 ) -> None:
     """Assemble the LLM-ready context for a question and report its exact token cost."""
-    with KnowledgeBase(artifact) as kb:
-        result = kb.build_context(text, limit=limit)
+    with KnowledgeBase(_resolve_kb(kb)) as base:
+        result = base.build_context(text, limit=limit)
     if show:
         console.print(result.text)
         console.print()
@@ -208,10 +226,10 @@ def context(
 
 @app.command()
 def ask(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
     text: str = typer.Argument(..., help="The question."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
     repo: Path = typer.Option(
-        ..., "--repo", "-r", exists=True, file_okay=False, help="Repo checkout to read code from."
+        Path("."), "--repo", "-r", exists=True, file_okay=False, help="Repo checkout for code."
     ),
     limit: int = typer.Option(8, "--limit", "-n", help="Max entities in the KB map."),
     hops: int = typer.Option(1, "--hops", help="Graph expansion hops from seed matches."),
@@ -221,8 +239,8 @@ def ask(
     show: bool = typer.Option(False, "--show", help="Print the assembled hybrid context."),
 ) -> None:
     """Hybrid context: KB map + graph-selected source slices, with a token breakdown."""
-    with KnowledgeBase(artifact) as kb:
-        result = kb.build_hybrid_context(
+    with KnowledgeBase(_resolve_kb(kb)) as base:
+        result = base.build_hybrid_context(
             text,
             repo,
             limit=limit,
@@ -244,11 +262,11 @@ def ask(
 
 @app.command()
 def stats(
-    artifact: Path = typer.Argument(..., exists=True, dir_okay=False, help="knowledge.kb path."),
+    kb: Path | None = typer.Option(None, "--kb", "-k", help="knowledge.kb path."),
 ) -> None:
     """Print summary statistics for a knowledge.kb."""
-    with KnowledgeBase(artifact) as kb:
-        data = kb.stats()
+    with KnowledgeBase(_resolve_kb(kb)) as base:
+        data = base.stats()
     console.print(f"[bold]{data['repo_name']}[/bold] (schema v{data['schema_version']})")
     table = Table()
     table.add_column("Entity")

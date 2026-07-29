@@ -7,8 +7,16 @@ from pathlib import Path
 
 import pytest
 from knowledge_builder.compiler import CompilationContext, CompilerConfig
-from knowledge_builder.parser.graphify_runner import GraphBuildError
+from knowledge_builder.parser.graphify_runner import GraphBuildError, resolve_graphify
 from knowledge_builder.passes.graph_build_pass import GraphBuildPass
+
+
+def test_resolve_graphify_finds_sibling_of_interpreter() -> None:
+    # `pip` always lives next to the interpreter — proves sibling resolution works
+    # even when the command is not on the global PATH (the pipx case for `graphify`).
+    assert resolve_graphify("pip") is not None
+    assert resolve_graphify("definitely-not-a-real-exe-xyz") is None
+
 
 _GRAPH = {"directed": True, "multigraph": False, "graph": {}, "nodes": [], "links": []}
 

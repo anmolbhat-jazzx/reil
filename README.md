@@ -24,32 +24,51 @@ Repository ──▶ graphify (AST) ──▶ Repository IR ──▶ Knowledge 
 ## Requirements
 
 - **Python ≥ 3.11**
-- **graphify** on your `PATH` for the automatic graph build (`knowledge build` runs it for you, AST-only, no tokens). PyPI package `graphifyy` → `graphify` CLI (install below). If graphify isn't installed, point at an existing `graphify-out/` with `--no-build-graph`.
+- **graphify** on your `PATH` for the automatic graph build (`reil build` runs it for you, AST-only, no tokens). PyPI package `graphifyy` → `graphify` CLI (install below). If graphify isn't installed, point at an existing `graphify-out/` with `--no-build-graph`.
 - All Python deps (`pydantic`, `typer`, `rich`, `structlog`, `tiktoken`) install automatically.
 
 ## Install
 
-```bash
-# 1. Create and activate a virtualenv
-python -m venv .venv
-source .venv/bin/activate
+### Use it — install once with `pipx` (recommended, works on any machine)
 
-# 2. Pre-requisite
-pip install -U graphifyy      # the package is graphifyy; the command is graphify
-
-# 3. Install this package — brings the `knowledge` CLI *and* graphify automatically
-pip install -e .              #use "pip install -e ".[dev]"" for dev only adds ruff/black/mypy/pytest;
-```
-
-graphify installs automatically as a dependency (Step 2 above). Its PyPI package is `graphifyy`
-(double "y"), but the **command it installs is `graphify`** (single "y"). Verify:
+`pipx` installs the `reil` CLI into its own isolated environment and puts it on your
+`PATH` — no project-venv pollution, no dependency conflicts. This is the reproducible way
+that works for everyone.
 
 ```bash
-graphify --help
+brew install pipx            # macOS  (Linux: python3 -m pip install --user pipx)
+pipx ensurepath              # adds pipx's bin dir to PATH — then restart your shell
+
+# Install the tool. The repo is private, so use an HTTPS token:
+pipx install "git+https://<TOKEN>@github.com/anmolbhat-jazzx/reil.git"
+# …or, if you already have the repo cloned locally (no token needed):
+pipx install /path/to/reil
 ```
 
-To skip graphify entirely and compile a repo that already has a `graphify-out/`, use
-`knowledge build <repo> --no-build-graph`.
+`graphify` comes bundled as a dependency, and `reil build` finds it automatically —
+even though pipx exposes only the `reil` command. Pin a version with a ref, e.g.
+`...reil.git@main`.
+
+> **Using it from a coding agent (Claude Code / Cursor)?** After `pipx ensurepath`,
+> **restart the agent/terminal** so it picks up the updated `PATH` — agents capture `PATH`
+> at launch, so a freshly installed command won't appear until then.
+
+### Develop it — clone
+
+```bash
+git clone git@github.com:anmolbhat-jazzx/reil.git && cd reil
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"      # adds ruff/black/mypy/pytest
+```
+
+Verify either install:
+
+```bash
+reil --help
+```
+
+To skip graphify and compile a repo that already has a `graphify-out/`, use
+`reil build <repo> --no-build-graph`.
 
 ---
 
@@ -57,7 +76,7 @@ To skip graphify entirely and compile a repo that already has a `graphify-out/`,
 
 ```bash
 # Compile a repo into knowledge.kb (runs graphify for you, AST-only → 0 tokens)
-knowledge build /path/to/repo
+reil build /path/to/repo
 ```
 
 Output:
@@ -88,20 +107,25 @@ section, so your existing content in those files is preserved. Pass `--no-agents
 If the repo already has a `graphify-out/` (or graphify isn't installed):
 
 ```bash
-knowledge build /path/to/repo --no-build-graph
+reil build /path/to/repo --no-build-graph
 ```
 
 ## Commands
 
+Run the query commands **from the repo root** — the KB path defaults to
+`.knowledge/knowledge.kb` (override with `--kb <path>`), and `reil ask` reads code from `.`
+by default (override with `--repo <path>`). If the KB is missing, the command fails and
+tells you to run `reil build .`.
+
 | Command | What it does |
 | --- | --- |
-| `knowledge build <repo>` | Compile a repo → `knowledge.kb`. Flags: `--workspace/-w`, `--no-build-graph`, `--rebuild`, `--strict`. |
-| `knowledge ask <kb> "<q>" --repo <repo>` | **Hybrid** answer context: KB map + exact source slices, with a token breakdown. |
-| `knowledge context <kb> "<q>"` | KB-only context (no source needed) + token count. |
-| `knowledge query <kb> "<text>"` | Ranked entity retrieval. |
-| `knowledge inspect <kb>` | Metadata, modules, counts. |
-| `knowledge validate <kb>` | Integrity report. |
-| `knowledge stats <kb>` | Summary statistics. |
+| `reil build <repo>` | Compile a repo → `knowledge.kb`. Flags: `--workspace/-w`, `--no-build-graph`, `--rebuild`, `--strict`. |
+| `reil ask "<q>"` | **Hybrid** answer context: KB map + exact source slices, with a token breakdown. |
+| `reil context "<q>"` | KB-only context (no source needed) + token count. |
+| `reil query "<text>"` | Ranked entity retrieval. |
+| `reil inspect` | Metadata, modules, counts. |
+| `reil validate` | Integrity report. |
+| `reil stats` | Summary statistics. |
 
 Hybrid tuning: `--code-budget` (default 2000 tokens), `--hops`, `--max-symbols`, `--max-lines`.
 
@@ -184,5 +208,5 @@ pyproject.toml       package + tool config
 - **Hybrid slices are approximate.** graphify stores only a symbol's start line, so a slice runs
   start → next-symbol-start (capped by `--max-lines`).
 - **Staleness.** If source changed since the graph was built, line markers can drift; `knowledge.kb`
-  stores `file_hashes` to support a future staleness check — re-run `knowledge build --rebuild`.
+  stores `file_hashes` to support a future staleness check — re-run `reil build --rebuild`.
 - **Tokenizer.** `cl100k_base` (real BPE), within ~10% of other modern tokenizers.

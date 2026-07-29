@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -27,6 +28,20 @@ GRAPHIFY_BUILD_COMMAND: tuple[str, ...] = ("graphify", "update", "{repo}")
 
 class GraphBuildError(KnowledgeBuilderError):
     """Raised when graphify cannot be run or produces no graph."""
+
+
+def resolve_graphify(name: str = "graphify") -> str | None:
+    """Locate the graphify executable.
+
+    graphify installs as our dependency, so its console script sits next to the
+    interpreter running us (the same venv/pipx environment) — even when it is not on
+    the global PATH (pipx only exposes *our* ``knowledge`` command, not a dependency's).
+    Prefer that sibling; fall back to PATH.
+    """
+    sibling = Path(sys.executable).parent / name
+    if sibling.is_file():
+        return str(sibling)
+    return shutil.which(name)
 
 
 class GraphifyRunner(Protocol):
@@ -44,12 +59,14 @@ class SubprocessGraphifyRunner:
         self._command = command
 
     def run(self, repo_path: Path) -> Path:
-        if shutil.which(self._command[0]) is None:
+        executable = resolve_graphify(self._command[0])
+        if executable is None:
             raise GraphBuildError(
-                f"'{self._command[0]}' is not installed or not on PATH. Install graphify, "
-                "or run `knowledge build --no-build-graph` against an existing graphify-out/."
+                f"'{self._command[0]}' not found next to the interpreter or on PATH. "
+                "Reinstall the tool (graphify ships as a dependency), or run "
+                "`reil build --no-build-graph` against an existing graphify-out/."
             )
-        argv = [part.replace("{repo}", str(repo_path)) for part in self._command]
+        argv = [executable, *(part.replace("{repo}", str(repo_path)) for part in self._command[1:])]
         logger = get_logger("graphify")
         logger.info("graphify.run", argv=argv, cwd=str(repo_path))
         try:

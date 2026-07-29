@@ -13,7 +13,10 @@ def test_creates_when_absent(tmp_path: Path) -> None:
     assert action == "created"
     text = path.read_text()
     assert BEGIN in text and END in text
-    assert "knowledge ask .knowledge/knowledge.kb" in text
+    assert 'reil ask "<question>"' in text
+    # preflight tool check so agents fall back cleanly when the CLI is absent
+    assert "command -v reil" in text
+    assert "read source directly" in text
 
 
 def test_appends_to_existing_without_markers(tmp_path: Path) -> None:
