@@ -24,8 +24,7 @@ Repository ──▶ graphify (AST) ──▶ Repository IR ──▶ Knowledge 
 ## Requirements
 
 - **Python ≥ 3.11**
-- **graphify** on your `PATH` for the automatic graph build (`reil build` runs it for you, AST-only, no tokens). PyPI package `graphifyy` → `graphify` CLI (install below). If graphify isn't installed, point at an existing `graphify-out/` with `--no-build-graph`.
-- All Python deps (`pydantic`, `typer`, `rich`, `structlog`, `tiktoken`) install automatically.
+- Everything installs automatically with the package — including **graphify** (PyPI package `graphifyy` → `graphify` CLI), which `reil build` runs for you (AST-only, no tokens). If graphify is ever unavailable, point at an existing `graphify-out/` with `--no-build-graph`.
 
 ## Install
 
@@ -39,15 +38,21 @@ that works for everyone.
 brew install pipx            # macOS  (Linux: python3 -m pip install --user pipx)
 pipx ensurepath              # adds pipx's bin dir to PATH — then restart your shell
 
-# Install the tool. The repo is private, so use an HTTPS token:
-pipx install "git+https://<TOKEN>@github.com/anmolbhat-jazzx/reil.git"
-# …or, if you already have the repo cloned locally (no token needed):
+# Install over HTTPS — no credentials if the repo is public; add a <TOKEN> before @ if private:
+pipx install "git+https://github.com/anmolbhat-jazzx/reil.git"
+
+# …or from a local clone (no network/token):
 pipx install /path/to/reil
 ```
 
-`graphify` comes bundled as a dependency, and `reil build` finds it automatically —
-even though pipx exposes only the `reil` command. Pin a version with a ref, e.g.
-`...reil.git@main`.
+> **Why `git+`?** It's pip's required prefix for installing *from a repo* — `git+https://…`
+> **is** the HTTPS install; the `git+` just tells pip to clone-and-build. A bare
+> `https://…` URL only works when it points at a built artifact (a PyPI package or a
+> GitHub Release `.whl`), not at a repository.
+
+`graphify` installs automatically with the package, and `reil build` finds it even though
+pipx exposes only the `reil` command (it lives next to `reil` in the same environment).
+Pin a version with a ref, e.g. `...reil.git@v0.2.0`.
 
 > **Using it from a coding agent (Claude Code / Cursor)?** After `pipx ensurepath`,
 > **restart the agent/terminal** so it picks up the updated `PATH` — agents capture `PATH`
@@ -58,7 +63,7 @@ even though pipx exposes only the `reil` command. Pin a version with a ref, e.g.
 ```bash
 git clone git@github.com:anmolbhat-jazzx/reil.git && cd reil
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"      # adds ruff/black/mypy/pytest
+pip install -e ".[dev]"      # adds ruff/black/mypy/pytest (graphify comes with the base install)
 ```
 
 Verify either install:

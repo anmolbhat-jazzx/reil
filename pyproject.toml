@@ -23,14 +23,14 @@ dependencies = [
     "rich>=13.7",
     "structlog>=24.1",
     "tiktoken>=0.7",
-    "graphifyy>=0.9",  # provides the `graphify` CLI that `knowledge build` runs
+    "graphifyy>=0.9",  # the `graphify` CLI that `reil build` runs (invoked as a subprocess)
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff>=0.5",
     "black>=24.4",
-    "mypy>=1.10",
+    "mypy>=1.11",
     "pytest>=8.2",
     "pytest-cov>=5.0",
     "pre-commit>=3.7",
@@ -80,8 +80,11 @@ target-version = ["py311"]
 line-length = 100
 extend-exclude = "tests/fixtures"
 
+# Type-check against the newest supported interpreter so modern dependency stubs
+# (e.g. numpy's PEP 695 `type` aliases) parse cleanly. Runtime is still exercised on
+# 3.11 by the pytest matrix, so 3.11-incompatible code is still caught.
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 warn_unused_configs = true
 disallow_untyped_defs = true
