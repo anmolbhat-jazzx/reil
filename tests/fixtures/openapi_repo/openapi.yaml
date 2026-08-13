@@ -1,0 +1,29 @@
+openapi: 3.0.0
+info:
+  title: Documents API
+  version: "1.0"
+paths:
+  /documents/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      operationId: getDocument
+      summary: Fetch a document.
+      tags: [documents]
+      responses:
+        "200": {description: ok}
+        "404": {description: missing}
+  /documents:
+    post:
+      operationId: createDocument
+      summary: Create a document.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentCreate"
+      responses:
+        "201": {description: created}

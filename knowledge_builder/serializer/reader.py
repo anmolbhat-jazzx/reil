@@ -19,6 +19,9 @@ from knowledge_builder.models import (
     Api,
     Concept,
     Controller,
+    DbMigration,
+    DbTable,
+    DbTechnology,
     Dependency,
     GraphNode,
     Metadata,
@@ -132,6 +135,15 @@ class KnowledgeReader:
     def relationships(self) -> tuple[Relationship, ...]:
         return self._load("relationships", Relationship)
 
+    def db_technologies(self) -> tuple[DbTechnology, ...]:
+        return self._load("db_technologies", DbTechnology)
+
+    def db_tables(self) -> tuple[DbTable, ...]:
+        return self._load("db_tables", DbTable)
+
+    def db_migrations(self) -> tuple[DbMigration, ...]:
+        return self._load("db_migrations", DbMigration)
+
     # -- lookups ------------------------------------------------------------
     def module_by_name(self, name: str) -> Module | None:
         return self._one_by("modules", "name", name, Module)
@@ -166,6 +178,9 @@ class KnowledgeReader:
             concepts=self.concepts(),
             dependencies=self.dependencies(),
             summaries=self.summaries(),
+            db_technologies=self.db_technologies(),
+            db_tables=self.db_tables(),
+            db_migrations=self.db_migrations(),
         )
 
     # -- internals ----------------------------------------------------------
@@ -195,6 +210,9 @@ class KnowledgeReader:
             "dependencies",
             "graph_nodes",
             "relationships",
+            "db_technologies",
+            "db_tables",
+            "db_migrations",
         )
         result: dict[str, int] = {}
         for table in tables:

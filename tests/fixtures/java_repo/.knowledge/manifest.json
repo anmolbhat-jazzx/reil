@@ -1,0 +1,27 @@
+{
+  ".knowledge/.graphify_labels.json": {
+    "mtime": 1786338471.910896,
+    "ast_hash": "039ff34e480b1957afe6bd778a8c0db6",
+    "semantic_hash": ""
+  },
+  ".knowledge/graph.json": {
+    "mtime": 1786338471.9022787,
+    "ast_hash": "409fbbb8a2ec5d3ed203a2e3bd55cb74",
+    "semantic_hash": ""
+  },
+  ".knowledge/manifest.json": {
+    "mtime": 1786338471.912718,
+    "ast_hash": "f01f8422be795ebd1702599755afe7fb",
+    "semantic_hash": ""
+  },
+  "pom.xml": {
+    "mtime": 1786032655.1211596,
+    "ast_hash": "4c8821143f93698d98b8df50da541bf9",
+    "semantic_hash": ""
+  },
+  "src/main/java/com/jazzx/docs/DocumentService.java": {
+    "mtime": 1786032655.1107194,
+    "ast_hash": "cc8c8087c16faecb8588dd0dd69b30b7",
+    "semantic_hash": ""
+  }
+}

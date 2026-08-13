@@ -75,10 +75,22 @@ class KnowledgeWriter:
             [(r.id, r.source_id, r.target_id, r.relation, _dump(r)) for r in repo.relationships],
         )
         conn.executemany(
-            "INSERT INTO symbols (id, label, source_file, module_id, language, data) "
-            "VALUES (?,?,?,?,?,?)",
+            "INSERT INTO symbols (id, label, name, kind, qualified_name, source_file, "
+            "start_line, end_line, module_id, language, data) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             [
-                (s.id, s.label, s.source_file, s.module_id, s.language, _dump(s))
+                (
+                    s.id,
+                    s.label,
+                    s.name,
+                    s.kind,
+                    s.qualified_name,
+                    s.source_file,
+                    s.start_line,
+                    s.end_line,
+                    s.module_id,
+                    s.language,
+                    _dump(s),
+                )
                 for s in repo.symbols
             ],
         )
@@ -113,6 +125,35 @@ class KnowledgeWriter:
         conn.executemany(
             "INSERT INTO summaries (id, module_id, data) VALUES (?,?,?)",
             [(s.id, s.module_id, _dump(s)) for s in repo.summaries],
+        )
+        conn.executemany(
+            "INSERT INTO db_technologies (id, name, category, confidence, data) "
+            "VALUES (?,?,?,?,?)",
+            [
+                (t.id, t.name, t.category, t.confidence.value, _dump(t))
+                for t in repo.db_technologies
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO db_tables (id, name, schema_name, technology, source_file, "
+            "confidence, data) VALUES (?,?,?,?,?,?,?)",
+            [
+                (
+                    t.id,
+                    t.name,
+                    t.schema_name,
+                    t.technology,
+                    t.source_file,
+                    t.confidence.value,
+                    _dump(t),
+                )
+                for t in repo.db_tables
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO db_migrations (id, name, technology, source_file, data) "
+            "VALUES (?,?,?,?,?)",
+            [(m.id, m.name, m.technology, m.source_file, _dump(m)) for m in repo.db_migrations],
         )
 
 

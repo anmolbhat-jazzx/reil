@@ -26,6 +26,35 @@ def test_detects_dangling_module_symbol() -> None:
     assert any(i.code == "SYMBOL_REF" for i in report.errors)
 
 
+def test_imports_are_not_expected_to_belong_to_a_module() -> None:
+    """A module is a business capability; an import belongs to none by construction.
+
+    Warning on every unassigned ``uuid``/``AsyncSession`` node buries the case that
+    actually matters — a *definition* the module partition failed to cover.
+    """
+    from knowledge_builder.models import GraphNode, Symbol
+
+    repo = Repository(
+        metadata=Metadata(repo_path="/x", repo_name="x"),
+        graph_nodes=(
+            GraphNode(id="i1", label="UUID", file_type="code"),  # type: ignore[arg-type]
+            GraphNode(id="d1", label="login", file_type="code"),  # type: ignore[arg-type]
+        ),
+        symbols=(
+            Symbol(id="i1", label="UUID", name="UUID", kind="import", start_line=1),
+            Symbol(id="d1", label="login", name="login", kind="function", start_line=10),
+        ),
+    )
+    report = validate_repository(repo)
+    unassigned = {i.message for i in report.warnings if "module" in i.message}
+
+    assert not any("i1" in m for m in unassigned)
+    assert any("d1" in m for m in unassigned)
+    # ...and the reference must not be re-reported as a *dangling* module pointer either:
+    # its ``module_id`` is absent, which is the expected state, not a broken reference.
+    assert not any(i.code == "SYMBOL_BAD_MODULE" for i in report.errors)
+
+
 def test_detects_duplicate_concepts() -> None:
     repo = Repository(
         metadata=Metadata(repo_path="/x", repo_name="x"),
@@ -36,6 +65,40 @@ def test_detects_duplicate_concepts() -> None:
     )
     report = validate_repository(repo)
     assert any(i.code == "DUP_CONCEPT" for i in report.errors)
+
+
+def test_detects_two_symbols_claiming_one_definition() -> None:
+    """``(name, source_file, start_line)`` is what external indexers join on.
+
+    Two definitions claiming the same tuple become two rows for one entity downstream,
+    so the collision has to be an error here — not a surprise in the consumer's importer.
+    """
+    from knowledge_builder.models import GraphNode, Symbol
+
+    def _sym(sid: str, kind: str) -> Symbol:
+        return Symbol(
+            id=sid,
+            label="DocumentService",
+            name="DocumentService",
+            kind=kind,
+            source_file="src/DocumentService.java",
+            start_line=9,
+        )
+
+    repo = Repository(
+        metadata=Metadata(repo_path="/x", repo_name="x"),
+        graph_nodes=(
+            GraphNode(id="a", label="DocumentService", file_type="code"),  # type: ignore[arg-type]
+            GraphNode(id="b", label="DocumentService", file_type="code"),  # type: ignore[arg-type]
+        ),
+        symbols=(_sym("a", "class"), _sym("b", "class")),
+    )
+    assert any(i.code == "DUP_SYMBOL_DEF" for i in validate_repository(repo).errors)
+
+    # The file node that *contains* the class shares its name and line span but is a
+    # reference, not a definition — it must not trip the check.
+    ok = repo.model_copy(update={"symbols": (_sym("a", "class"), _sym("b", "file"))})
+    assert not any(i.code == "DUP_SYMBOL_DEF" for i in validate_repository(ok).errors)
 
 
 def test_detects_duplicate_summaries() -> None:

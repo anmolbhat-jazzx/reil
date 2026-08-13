@@ -64,7 +64,11 @@ def render_block(kb_rel: str) -> str:
         f"`{kb_rel}`):\n"
         '    - Detailed (map + exact code): `reil ask "<question>"`\n'
         '    - Overview (cheapest, no code): `reil context "<question>"`\n'
-        '    - Find entities: `reil query "<terms>"`\n\n'
+        '    - Find entities: `reil query "<terms>"`\n'
+        "    - **Database schema** (tables, columns, keys, relationships, migrations): "
+        '`reil context "<question>" --kind database --show` for LLM-ready context, or '
+        "`reil db [<table>]` to browse. Prefer this over reading migrations/models for "
+        "any question about the data model, tables, or how records relate.\n\n"
         "Rebuild after significant changes: `reil build . --rebuild`. If the CLI is "
         "missing or the KB cannot answer, fall back to reading source.\n"
         f"{END}"

@@ -95,6 +95,270 @@ def test_classification(extracted: CompilationContext) -> None:
     assert {a.name for a in ir.apis} == {"upload_route"}
 
 
+def test_classification_ignores_tests_and_file_nodes() -> None:
+    """Test scaffolding and file/import nodes are not architectural components."""
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.passes.classify_pass import _role
+
+    # Test helpers mention "endpoint"/"route" constantly but are not the API surface.
+    assert (
+        _role(
+            Symbol(
+                id="t",
+                label="test_status_endpoint()",
+                name="test_status_endpoint",
+                kind="function",
+                source_file="tests/unit/test_zip_upload_status.py",
+            )
+        )
+        is None
+    )
+    assert (
+        _role(
+            Symbol(
+                id="c",
+                label="TestRegistryEndpoints",
+                name="TestRegistryEndpoints",
+                kind="class",
+                source_file="tests/registry/test_registry_api.py",
+            )
+        )
+        is None
+    )
+    # A file node is a location, not an endpoint.
+    assert (
+        _role(
+            Symbol(
+                id="f",
+                label="api_v1/endpoints.py",
+                name="endpoints",
+                kind="file",
+                source_file="app/router/api_v1/endpoints.py",
+            )
+        )
+        is None
+    )
+    # Production routes still classify.
+    assert (
+        _role(
+            Symbol(
+                id="p",
+                label="upload_route",
+                name="upload_route",
+                kind="function",
+                source_file="app/upload/routes.py",
+            )
+        )
+        is not None
+    )
+
+
+def test_module_names_ignore_references_and_private_labels() -> None:
+    """A module is named for its capability, not for a label that happens to be prominent.
+
+    graphify labels a community after a notable node, which is often an imported type
+    (``Any``) or a private helper (``._execute_command``) — neither describes what the
+    code does, so the package name wins.
+    """
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.parser.types import CommunityInfo
+    from knowledge_builder.passes.module_pass import (
+        _community_name,
+        _name_from_symbols,
+        _standalone_name,
+    )
+
+    def sym(name: str, kind: str, file: str) -> Symbol:
+        return Symbol(id=name, label=name, name=name.lstrip("."), kind=kind, source_file=file)
+
+    imported = [sym("Any", "import", "app/queue/base.py")]
+    community = CommunityInfo(id="0", label="Any", member_ids=("Any",))
+    assert _community_name(community, imported) == "Queue"
+
+    private = sym("._execute_command", "method", "app/local_fs/cli.py")
+    assert _standalone_name(private) == "LocalFs"
+
+    # A real capability name is kept as-is.
+    real = sym("ZipUploadService", "class", "app/zip_upload/service.py")
+    assert _standalone_name(real) == "ZipUploadService"
+
+    # The generic "Module" fallback is replaced by something identifying.
+    assert _name_from_symbols([sym("x", "function", "scripts/obfuscate.py")]) != "Module"
+
+
+def test_duplicate_module_names_are_disambiguated() -> None:
+    """A dozen modules called "Collection" are unusable; widen each with path context."""
+    from knowledge_builder.models import Module
+    from knowledge_builder.passes.module_pass import _disambiguate_names
+
+    modules = [
+        Module(id="m1", name="Collection", source_paths=("app/collection/api.py",)),
+        Module(id="m2", name="Collection", source_paths=("app/collection/models.py",)),
+        Module(id="m3", name="Collection", source_paths=("tests/collection/test_doc.py",)),
+        Module(id="m4", name="ZipUpload", source_paths=("app/zip_upload/service.py",)),
+    ]
+    result = {m.id: m.name for m in _disambiguate_names(modules, {})}
+
+    # Same directory — only the file name can separate them.
+    assert result["m1"] == "Collection Api"
+    assert result["m2"] == "Collection Models"
+    assert result["m3"] != result["m1"]
+    assert len({result["m1"], result["m2"], result["m3"]}) == 3
+    # An already-unique name is left alone.
+    assert result["m4"] == "ZipUpload"
+
+
+def test_widening_never_reintroduces_a_duplicate() -> None:
+    """Two *different* colliding groups can widen toward the same string.
+
+    ``FsManager`` × 2 and ``TestFsManager`` × 2 both live under ``tests/local_fs`` and
+    both reach for ``LocalFs TestFsManager``. A per-group name pool lets the second group
+    claim it again — reintroducing the exact duplicate the widening exists to remove.
+    """
+    from knowledge_builder.models import Module
+    from knowledge_builder.passes.module_pass import _disambiguate_names
+
+    modules = [
+        Module(id="a1", name="FsManager", source_paths=("tests/local_fs/test_fs_manager.py",)),
+        Module(id="a2", name="FsManager", source_paths=("tests/local_fs/test_cli.py",)),
+        Module(id="b1", name="TestFsManager", source_paths=("tests/local_fs/test_fs_manager.py",)),
+        Module(id="b2", name="TestFsManager", source_paths=("tests/local_fs/test_models.py",)),
+    ]
+    names = [m.name for m in _disambiguate_names(modules, {})]
+    assert len(set(names)) == len(names), names
+
+
+def test_widening_falls_back_to_symbol_names_when_the_path_runs_out() -> None:
+    """Many one-symbol modules carved out of one file share every path segment.
+
+    Path widening cannot separate them, and ``Collection 2``…``Collection 9`` is not a
+    listing anyone can read. What differs is the code each module owns.
+    """
+    from knowledge_builder.models import Module, Symbol
+    from knowledge_builder.passes.module_pass import _disambiguate_names
+
+    path = ("tests/collection/test_search.py",)
+    names = ("test_uuid_search", "test_name_search", "test_sql_injection_rejected")
+    symbols = {
+        f"s{i}": Symbol(id=f"s{i}", label=n, name=n, kind="function", source_file=path[0])
+        for i, n in enumerate(names)
+    }
+    modules = [
+        Module(id=f"m{i}", name="Collection", source_paths=path, symbol_ids=(f"s{i}",))
+        for i in range(len(names))
+    ]
+    result = [m.name for m in _disambiguate_names(modules, symbols)]
+
+    assert len(set(result)) == len(result), result
+    # The path yields only two distinct widenings, so the third module must be named for
+    # the code it holds — not "Collection 2".
+    assert "TestSqlInjectionRejected" in result
+
+
+def test_path_labels_are_not_capability_names() -> None:
+    """``app/core/__init__.py`` says where code lives; the package says what it does.
+
+    A bare file name is left alone — for a migration the file name *is* the description,
+    and nothing we could derive from ``migrations/versions`` would beat it.
+    """
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.parser.types import CommunityInfo
+    from knowledge_builder.passes.module_pass import _community_name
+
+    members = [Symbol(id="s", label="s", name="s", kind="function", source_file="app/core/db.py")]
+    located = CommunityInfo(id="0", label="app/core/__init__.py", member_ids=("s",))
+    assert _community_name(located, members) == "Core"
+
+    migration = [
+        Symbol(
+            id="m",
+            label="upgrade",
+            name="upgrade",
+            kind="function",
+            source_file="migrations/versions/0007_added_reasoner_runs_table.py",
+        )
+    ]
+    named = CommunityInfo(id="1", label="0007_added_reasoner_runs_table.py", member_ids=("m",))
+    assert _community_name(named, migration) == "0007_added_reasoner_runs_table.py"
+
+
+def test_reference_only_clusters_are_not_modules() -> None:
+    """graphify clusters imports too: ``typing.Any`` attracts a community of its users.
+
+    Such a group defines nothing and points at no file — there is nothing to open, and
+    "Any" names a type the code *depends on*, not a capability it provides.
+    """
+    from knowledge_builder.models import Module, Symbol
+    from knowledge_builder.passes.module_pass import _is_reference_only
+
+    symbols = {
+        "i1": Symbol(id="i1", label="Any", name="Any", kind="import"),
+        "i2": Symbol(id="i2", label="UUID", name="UUID", kind="import"),
+        "d1": Symbol(
+            id="d1", label="run", name="run", kind="function", source_file="app/worker.py"
+        ),
+    }
+    imports_only = Module(id="m1", name="Any", symbol_ids=("i1", "i2"))
+    assert _is_reference_only(imports_only, symbols) is True
+
+    # One real definition is enough to keep the module.
+    mixed = Module(id="m2", name="Worker", symbol_ids=("i1", "d1"))
+    assert _is_reference_only(mixed, symbols) is False
+
+    # So is a source path: imports that came from a real file still locate code.
+    located = Module(id="m3", name="Any", symbol_ids=("i1",), source_paths=("app/deps.py",))
+    assert _is_reference_only(located, symbols) is False
+
+
+def test_module_name_never_degrades_to_the_word_module() -> None:
+    """Graph nodes can carry no source file at all; "Module 7" names nothing."""
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.passes.module_pass import _name_from_symbols
+
+    orphans = [Symbol(id="s1", label="publish_event", name="publish_event", kind="function")]
+    assert _name_from_symbols(orphans) == "PublishEvent"
+
+
+def test_a_generic_package_falls_back_to_the_real_file_stem() -> None:
+    """``app/`` is a generic root, so the directory names nothing — the file must.
+
+    The capability lookup needs a path; handing it a synthetic ``{package}/x.py`` means
+    that when every directory is generic the fallback returns the placeholder's own stem
+    and the module ends up called "X".
+    """
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.passes.module_pass import _name_from_symbols
+
+    generic = [
+        Symbol(
+            id="s1", label="lifespan", name="lifespan", kind="function", source_file="app/main.py"
+        )
+    ]
+    assert _name_from_symbols(generic) == "Main"
+
+    # A meaningful directory still wins over the file name.
+    scoped = [
+        Symbol(
+            id="s2", label="get", name="get", kind="function", source_file="app/collection/api.py"
+        )
+    ]
+    assert _name_from_symbols(scoped) == "Collection"
+
+
+def test_dunder_and_private_names_are_not_naming_candidates() -> None:
+    """``__init__`` would widen to the module "Init" — less use than the counter."""
+    from knowledge_builder.models import Module, Symbol
+    from knowledge_builder.passes.module_pass import _symbol_names
+
+    symbols = {
+        "d": Symbol(id="d", label="__init__", name="__init__", kind="function"),
+        "p": Symbol(id="p", label="_helper", name="_helper", kind="function"),
+        "r": Symbol(id="r", label="load", name="load", kind="function"),
+    }
+    module = Module(id="m", name="Storage", symbol_ids=("d", "p", "r"))
+    assert _symbol_names(module, symbols) == ["Load"]
+
+
 def test_modules_hybrid(extracted: CompilationContext) -> None:
     ir = extracted.require_ir()
     modules = {m.name: m for m in ir.modules}

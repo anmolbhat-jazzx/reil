@@ -13,6 +13,7 @@ from knowledge_builder.models.api import Api
 from knowledge_builder.models.base import IRModel
 from knowledge_builder.models.concept import Concept
 from knowledge_builder.models.controller import Controller
+from knowledge_builder.models.database import DbMigration, DbTable, DbTechnology
 from knowledge_builder.models.dependency import Dependency
 from knowledge_builder.models.graph import GraphNode, Relationship
 from knowledge_builder.models.metadata import Metadata
@@ -46,6 +47,11 @@ class Repository(IRModel):
     dependencies: tuple[Dependency, ...] = ()
     summaries: tuple[Summary, ...] = ()
 
+    # Database layer (extracted from source by the db parser, not from graphify).
+    db_technologies: tuple[DbTechnology, ...] = ()
+    db_tables: tuple[DbTable, ...] = ()
+    db_migrations: tuple[DbMigration, ...] = ()
+
     def evolve(self, **changes: Any) -> Repository:
         """Return a copy of this repository with ``changes`` applied."""
         return self.model_copy(update=changes)
@@ -65,6 +71,9 @@ class Repository(IRModel):
 
     def summary_by_id(self) -> dict[str, Summary]:
         return {s.id: s for s in self.summaries}
+
+    def db_table_by_id(self) -> dict[str, DbTable]:
+        return {t.id: t for t in self.db_tables}
 
     # -- name lookups (case-insensitive) ------------------------------------
     def find_module(self, name: str) -> Module | None:

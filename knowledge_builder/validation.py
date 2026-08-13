@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 from knowledge_builder.models.metadata import SCHEMA_VERSION
 from knowledge_builder.models.repository import Repository
+from knowledge_builder.models.symbol import REFERENCE_KINDS
 
 
 class Level(StrEnum):
@@ -107,13 +108,42 @@ def validate_repository(repo: Repository) -> ValidationReport:
     for symbol in repo.symbols:
         if symbol.id not in node_ids:
             add(_err("SYMBOL_NOT_NODE", f"symbol {symbol.id} has no backing graph node"))
+        if not symbol.name:
+            add(_warn("SYMBOL_NO_NAME", f"symbol {symbol.id} has no resolved name"))
+        # Imported/external references have no definition site here — that is expected,
+        # so only a symbol that should be defined in this repo is worth warning about.
+        if symbol.start_line is None and symbol.kind not in REFERENCE_KINDS:
+            add(_warn("SYMBOL_NO_START_LINE", f"symbol {symbol.id} has no start_line"))
+        # A module is a business capability. An import belongs to none by construction, so
+        # only an unassigned *definition* is a real gap in the module partition.
         if symbol.module_id is None:
-            add(_warn("SYMBOL_NO_MODULE", f"symbol {symbol.id} is not assigned to a module"))
+            # Only an unassigned *definition* is a gap; a reference belonging to no module
+            # is the expected case, and must not fall through to the dangling-ref check
+            # below — "missing module None" is the absence itself, not a broken pointer.
+            if symbol.kind not in REFERENCE_KINDS:
+                add(_warn("SYMBOL_NO_MODULE", f"symbol {symbol.id} is not assigned to a module"))
         elif symbol.module_id not in module_ids:
             add(
                 _err(
                     "SYMBOL_BAD_MODULE",
                     f"symbol {symbol.id} → missing module {symbol.module_id}",
+                )
+            )
+
+    # ``(name, source_file, start_line)`` is the identity tuple external indexers join on.
+    # Two definitions claiming it are two rows for one entity downstream, so the collision
+    # has to surface here rather than in the consumer's database.
+    definitions = Counter(
+        (s.name, s.source_file, s.start_line)
+        for s in repo.symbols
+        if s.kind not in REFERENCE_KINDS and s.source_file and s.start_line is not None
+    )
+    for (name, source_file, start_line), count in definitions.items():
+        if count > 1:
+            add(
+                _err(
+                    "DUP_SYMBOL_DEF",
+                    f"{count} symbols claim definition {name!r} at {source_file}:{start_line}",
                 )
             )
 
@@ -127,6 +157,15 @@ def validate_repository(repo: Repository) -> ValidationReport:
     for concept in repo.concepts:
         if concept.id not in referenced and not concept.related_ids:
             add(_warn("ORPHAN_CONCEPT", f"concept {concept.id} is unreferenced"))
+
+    # -- database layer ----------------------------------------------------
+    db_table_ids = [t.id for t in repo.db_tables]
+    for table_id, count in Counter(db_table_ids).items():
+        if count > 1:
+            add(_err("DUP_DB_TABLE", f"db table id {table_id!r} appears {count} times"))
+    for table in repo.db_tables:
+        if not table.columns:
+            add(_warn("DB_TABLE_NO_COLUMNS", f"db table {table.id} has no extracted columns"))
 
     # -- duplicate summaries / concepts ------------------------------------
     per_module = Counter(s.module_id for s in repo.summaries)

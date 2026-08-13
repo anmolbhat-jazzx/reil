@@ -53,12 +53,17 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     """,
     """
     CREATE TABLE symbols (
-        id          TEXT PRIMARY KEY,
-        label       TEXT,
-        source_file TEXT,
-        module_id   TEXT,
-        language    TEXT,
-        data        TEXT NOT NULL
+        id             TEXT PRIMARY KEY,
+        label          TEXT,
+        name           TEXT,
+        kind           TEXT,
+        qualified_name TEXT,
+        source_file    TEXT,
+        start_line     INTEGER,
+        end_line       INTEGER,
+        module_id      TEXT,
+        language       TEXT,
+        data           TEXT NOT NULL
     )
     """,
     """
@@ -122,6 +127,35 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         data      TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE db_technologies (
+        id         TEXT PRIMARY KEY,
+        name       TEXT,
+        category   TEXT,
+        confidence TEXT,
+        data       TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE db_tables (
+        id          TEXT PRIMARY KEY,
+        name        TEXT,
+        schema_name TEXT,
+        technology  TEXT,
+        source_file TEXT,
+        confidence  TEXT,
+        data        TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE db_migrations (
+        id          TEXT PRIMARY KEY,
+        name        TEXT,
+        technology  TEXT,
+        source_file TEXT,
+        data        TEXT NOT NULL
+    )
+    """,
     "CREATE INDEX idx_modules_name ON modules (name)",
     "CREATE INDEX idx_services_name ON services (name)",
     "CREATE INDEX idx_controllers_name ON controllers (name)",
@@ -130,7 +164,13 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     "CREATE INDEX idx_workflows_name ON workflows (name)",
     "CREATE INDEX idx_symbols_label ON symbols (label)",
     "CREATE INDEX idx_symbols_module ON symbols (module_id)",
+    "CREATE INDEX idx_symbols_name ON symbols (name)",
+    # The (name, source_file, start_line) identity tuple external indexers join on.
+    "CREATE INDEX idx_symbols_identity ON symbols (name, source_file, start_line)",
     "CREATE INDEX idx_summaries_module ON summaries (module_id)",
     "CREATE INDEX idx_relationships_source ON relationships (source_id)",
     "CREATE INDEX idx_relationships_target ON relationships (target_id)",
+    "CREATE INDEX idx_db_tables_name ON db_tables (name)",
+    "CREATE INDEX idx_db_technologies_name ON db_technologies (name)",
+    "CREATE INDEX idx_db_migrations_name ON db_migrations (name)",
 )

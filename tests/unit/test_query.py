@@ -50,6 +50,69 @@ def test_query_empty_text(kb: KnowledgeBase) -> None:
     assert kb.query("") == []
 
 
+def test_context_renders_symbol_detail() -> None:
+    """A bare name teaches a model nothing — signature and docstring must come along."""
+    from knowledge_builder.models import Symbol
+    from knowledge_builder.query.knowledge_base import _render_symbol
+
+    lines = _render_symbol(
+        Symbol(
+            id="s",
+            label="upload",
+            name="upload",
+            kind="function",
+            qualified_name="src.upload.service.upload",
+            signature="(blob)",
+            docstring="Upload a blob to object storage.",
+            source_file="src/upload/service.py",
+            start_line=10,
+        )
+    )
+    rendered = "\n".join(lines)
+    assert "src.upload.service.upload(blob)" in rendered
+    assert "src/upload/service.py:L10" in rendered
+    assert "Upload a blob to object storage." in rendered
+
+
+def test_is_test_detection() -> None:
+    from knowledge_builder.query.knowledge_base import _is_test
+
+    assert _is_test("tests/unit/test_zip_upload.py")
+    assert _is_test("app/zip_upload/test_helpers.py")
+    assert not _is_test("app/zip_upload/service.py")
+
+
+def test_production_outranks_tests_unless_asked_for(tmp_path: Path) -> None:
+    """``test_zip_upload_processing`` matches more query words than the feature itself.
+
+    A tie-break is therefore too weak — it needs a score penalty — but the penalty must
+    lift when the question is explicitly about tests.
+    """
+    from knowledge_builder.models import Metadata, Module, Repository
+
+    repo = Repository(
+        metadata=Metadata(repo_path=".", repo_name="r"),
+        modules=(
+            Module(
+                id="m1",
+                name="test_zip_upload_processing.py",
+                source_paths=("tests/unit/test_zip_upload_processing.py",),
+            ),
+            Module(
+                id="m2",
+                name="zip_upload/service.py",
+                source_paths=("app/zip_upload/service.py",),
+            ),
+        ),
+    )
+    path = KnowledgeWriter().write(repo, tmp_path / "rank.kb")
+    with KnowledgeBase(path) as base:
+        feature_first = base.query("how does zip upload processing work")
+        assert feature_first[0].name == "zip_upload/service.py"
+        tests_first = base.query("zip upload tests")
+        assert tests_first[0].name == "test_zip_upload_processing.py"
+
+
 def test_stats(kb: KnowledgeBase) -> None:
     stats = kb.stats()
     assert stats["repo_name"] == "sample_repo"

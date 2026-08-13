@@ -127,7 +127,7 @@ tells you to run `reil build .`.
 | `reil build <repo>` | Compile a repo → `knowledge.kb`. Flags: `--workspace/-w`, `--no-build-graph`, `--rebuild`, `--strict`. |
 | `reil ask "<q>"` | **Hybrid** answer context: KB map + exact source slices, with a token breakdown. |
 | `reil context "<q>"` | KB-only context (no source needed) + token count. |
-| `reil query "<text>"` | Ranked entity retrieval. |
+| `reil query "<text>"` | Ranked entity retrieval. Add `--kind database` to search only the DB layer (tables, migrations, technologies). |
 | `reil inspect` | Metadata, modules, counts. |
 | `reil validate` | Integrity report. |
 | `reil stats` | Summary statistics. |
@@ -205,6 +205,26 @@ knowledge_builder/   models · compiler · parser · passes · optimizer · seri
 tests/               unit/ + integration/ + fixtures/ (a tiny sample graphify-out)
 pyproject.toml       package + tool config
 ```
+
+## Database layer (repo-, SQL-, and tech-agnostic)
+
+`reil build` also extracts a **database knowledge layer** directly from source — independent
+of graphify — and stores it alongside the code layer. It works in three data-driven stages,
+so no stack is hard-coded:
+
+1. **Fingerprint** the repo to detect the stack (Alembic, Flyway, Liquibase, Django, Prisma,
+   SQLAlchemy, JPA/Hibernate, raw SQL, …) plus the SQL dialect. Adding a technology is one
+   row in the fingerprint registry, not new code.
+2. **Extract** to a universal SQL substrate: [`sqlglot`](https://github.com/tobymao/sqlglot)
+   parses SQL DDL dialect-agnostically; Alembic migrations are read via static Python AST
+   (no code execution). Other stacks plug in the same way.
+3. **Project** into `DbTable` / `DbColumn` / `DbConstraint` / `DbIndex` / `DbMigration` /
+   `DbTechnology` IR — every fact tagged with source evidence (`file:line`) and a confidence
+   tier. Anything unrecognized degrades to the SQL facts it can still read; the rest stays
+   *unknown* (never inferred).
+
+Query it with `reil query "<text>" --kind database`, or from Python via
+`reader.db_tables()` / `.db_migrations()` / `.db_technologies()`.
 
 ## Notes / caveats
 

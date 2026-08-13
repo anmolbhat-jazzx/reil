@@ -14,6 +14,14 @@ from knowledge_builder.models.base import (
 )
 from knowledge_builder.models.concept import Concept
 from knowledge_builder.models.controller import Controller
+from knowledge_builder.models.database import (
+    DbColumn,
+    DbConstraint,
+    DbIndex,
+    DbMigration,
+    DbTable,
+    DbTechnology,
+)
 from knowledge_builder.models.dependency import Dependency
 from knowledge_builder.models.graph import GraphNode, Relationship
 from knowledge_builder.models.metadata import SCHEMA_VERSION, Metadata
@@ -31,6 +39,12 @@ __all__ = [
     "Concept",
     "Confidence",
     "Controller",
+    "DbColumn",
+    "DbConstraint",
+    "DbIndex",
+    "DbMigration",
+    "DbTable",
+    "DbTechnology",
     "Dependency",
     "FileType",
     "GraphNode",

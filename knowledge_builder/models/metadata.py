@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from knowledge_builder.models.base import IRModel
 
-SCHEMA_VERSION = 1
-"""Version of the ``knowledge.kb`` schema. Bump on any breaking table change."""
+SCHEMA_VERSION = 4
+"""Version of the ``knowledge.kb`` schema. Bump on any breaking table change.
+
+v2 adds the database layer (``db_technologies`` / ``db_tables`` / ``db_migrations``).
+v3 adds enriched symbol columns (``name`` / ``start_line`` / ``end_line`` / ``kind`` /
+``qualified_name``) and the ``(name, source_file, start_line)`` identity index.
+v4 makes an ``Api`` one row per route rather than per spec declaration, adding
+``also_declared_in`` / ``spec_conflict``. Multi-spec repos could not be compiled at all
+before this (duplicate ``apis.id``).
+Artifacts built at an older version must be rebuilt.
+"""
 
 
 class Metadata(IRModel):

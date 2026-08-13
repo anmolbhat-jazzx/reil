@@ -83,8 +83,29 @@ class ClassifyPass(CompilerPass):
         )
 
 
+#: Symbol kinds that are never an architectural component (files, imports, references).
+_NON_COMPONENT_KINDS: frozenset[str] = frozenset({"file", "module", "import", "variable"})
+
+
+def _is_test_path(path: str) -> bool:
+    """True for test sources — their helpers are not production components."""
+    parts = path.split("/")
+    stem = parts[-1].rsplit(".", 1)[0] if parts else ""
+    return (
+        any(seg in ("tests", "test", "testing", "__tests__") for seg in parts)
+        or stem.startswith("test_")
+        or stem.endswith("_test")
+    )
+
+
 def _role(symbol: Symbol) -> ComponentKind | None:
     path = (symbol.source_file or "").lower()
+    # A file/import node is a location or a reference, never an endpoint or service.
+    if symbol.kind in _NON_COMPONENT_KINDS:
+        return None
+    # Test scaffolding mentions "endpoint"/"route" constantly; it is not the API surface.
+    if _is_test_path(path):
+        return None
     parts = path.split("/")
     stem = parts[-1].rsplit(".", 1)[0] if parts else ""
     label = symbol.label.lower()

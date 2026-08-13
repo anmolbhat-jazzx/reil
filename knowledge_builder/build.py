@@ -14,16 +14,20 @@ from knowledge_builder.compiler.pass_base import CompilerPass
 from knowledge_builder.compiler.pipeline import ProgressHook
 from knowledge_builder.passes import (
     AgentsDocPass,
+    CallEnrichPass,
     CallGraphPass,
     ClassifyPass,
     ConceptPass,
+    DatabasePass,
     DependencyPass,
     GraphBuildPass,
     LoadPass,
     ModulePass,
+    OpenApiPass,
     OptimizePass,
     SerializePass,
     SummaryPass,
+    SymbolEnrichPass,
     SymbolPass,
     ValidatePass,
     WorkflowPass,
@@ -36,9 +40,13 @@ def default_passes() -> list[CompilerPass]:
         GraphBuildPass(),  # run graphify → import into workspace → discard transient
         LoadPass(),  # Phase 3: graphify → IR skeleton
         SymbolPass(),  # Phase 4: deterministic extraction
+        SymbolEnrichPass(),  # fill source-derived detail (docstrings, signatures, kinds)
+        CallEnrichPass(),  # resolve local-variable receivers graphify cannot type
         CallGraphPass(),
         DependencyPass(),
         ClassifyPass(),
+        OpenApiPass(),  # authoritative contracts override heuristic routes
+        DatabasePass(),  # deterministic DB-schema extraction (independent of graphify)
         ModulePass(),
         ConceptPass(),  # Phase 5: semantic harvest
         WorkflowPass(),
